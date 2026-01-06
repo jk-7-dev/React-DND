@@ -1,20 +1,37 @@
 import { Link } from '@tanstack/react-router';
-import { useBuilderStore } from '../store/useBuilderStore';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import { LiveFormRenderer } from '../components/ui/LiveFormRenderer';
-import { ArrowLeft } from 'lucide-react';
-import { viewFormRoute } from '../router'; // <--- Import the route definition
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import { viewFormRoute } from '../router';
 
 export function ViewForm() {
-  // Use the hook specifically bound to this route
   const { formId } = viewFormRoute.useParams(); 
   
-  const { savedForms } = useBuilderStore();
-  const form = savedForms.find(f => f.id === formId);
+  const { data: form, isLoading, isError } = useQuery({
+    queryKey: ['form', formId],
+    queryFn: async () => {
+        const res = await axios.get(`http://localhost:8080/api/forms/${formId}`);
+        const data = res.data;
+        // Parse the JSON string from DB back into an array so the renderer can use it
+        if (typeof data.elements === 'string') {
+            data.elements = JSON.parse(data.elements); 
+        }
+        return data;
+    }
+  });
 
-  if (!form) {
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={32} />
+    </div>
+  );
+
+  if (isError || !form) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-gray-500">
         <h2 className="text-xl font-semibold mb-2">Form Not Found</h2>
+        <p className="mb-4">Could not load form ID: {formId}</p>
         <Link to="/forms" className="text-blue-600 hover:underline">Return to My Forms</Link>
       </div>
     );

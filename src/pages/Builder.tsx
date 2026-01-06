@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { DragDropContext } from '@hello-pangea/dnd';
-import type { DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { v4 as uuidv4 } from 'uuid';
-import { useNavigate } from '@tanstack/react-router'; // <--- CHANGED
+import { useNavigate } from '@tanstack/react-router';
+import { useMutation } from '@tanstack/react-query';
+import axios from 'axios';
+
 import { Sidebar } from '../components/builder/Sidebar';
 import { Canvas } from '../components/builder/Canvas';
 import { PropertiesPanel } from '../components/builder/PropertiesPanel';
@@ -11,19 +13,38 @@ import { useBuilderStore } from '../store/useBuilderStore';
 import type { ElementType } from '../types';
 
 export function Builder() {
-  const { addElement, reorderElements, saveForm, elements } = useBuilderStore();
+  const { addElement, reorderElements, elements } = useBuilderStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formName, setFormName] = useState("");
-  
-  const navigate = useNavigate(); // <--- CHANGED
+  const navigate = useNavigate();
+
+  // React Query Mutation to Save Form to Go Backend
+  const saveMutation = useMutation({
+    mutationFn: async (newForm: { name: string; elements: string }) => {
+      // Ensure your Go backend is running on port 8080
+      return axios.post('http://localhost:8080/api/forms', newForm);
+    },
+    onSuccess: () => {
+      setIsModalOpen(false);
+      // Use navigate with the 'to' property for TanStack Router
+      navigate({ to: '/forms' });
+    },
+    onError: (error) => {
+        console.error("Save failed", error);
+        alert("Failed to save form. Is the backend running?");
+    }
+  });
 
   const handleSave = () => {
     if (!formName.trim()) return;
-    saveForm(formName);
-    setIsModalOpen(false);
     
-    // Navigate to /forms
-    navigate({ to: '/forms' }); // <--- CHANGED
+    // Convert elements array to JSON string for storage in SQLite
+    const elementsJson = JSON.stringify(elements);
+    
+    saveMutation.mutate({
+        name: formName,
+        elements: elementsJson
+    });
   };
 
   const onDragEnd = (result: DropResult) => {
@@ -51,17 +72,17 @@ export function Builder() {
           <h1 className="text-xl font-bold text-gray-800">New Form</h1>
           <div className="flex gap-2">
             <button 
-              onClick={() => navigate({ to: '/forms' })} // <--- CHANGED
+              onClick={() => navigate({ to: '/forms' })} 
               className="text-gray-600 px-4 py-2 hover:bg-gray-100 rounded text-sm"
             >
                 My Forms
             </button>
             <button 
                 onClick={() => setIsModalOpen(true)}
-                disabled={elements.length === 0}
+                disabled={elements.length === 0 || saveMutation.isPending}
                 className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Form
+              {saveMutation.isPending ? "Saving..." : "Save Form"}
             </button>
           </div>
         </header>
@@ -85,7 +106,9 @@ export function Builder() {
                     />
                     <div className="flex justify-end gap-2">
                         <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
-                        <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+                        <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            {saveMutation.isPending ? "Saving..." : "Create"}
+                        </button>
                     </div>
                 </div>
             </div>

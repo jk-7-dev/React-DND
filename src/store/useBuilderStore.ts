@@ -1,31 +1,23 @@
 import { create } from 'zustand';
 import type { FormElement } from '../types';
 
-export interface SavedForm {
-  id: string;
-  name: string;
-  createdAt: string;
-  elements: FormElement[];
-}
+
 
 interface BuilderStore {
   elements: FormElement[];
   selectedElement: FormElement | null;
-  savedForms: SavedForm[]; // <--- NEW: Store saved forms
 
   addElement: (index: number, element: FormElement) => void;
   removeElement: (id: string) => void;
   reorderElements: (startIndex: number, endIndex: number) => void;
   setSelectedElement: (element: FormElement | null) => void;
   updateElement: (id: string, updates: Partial<FormElement>) => void;
-  
-  saveForm: (name: string) => void; // <--- NEW ACTION
+  setElements: (elements: FormElement[]) => void; // Useful for loading existing forms
 }
 
-export const useBuilderStore = create<BuilderStore>((set, get) => ({
+export const useBuilderStore = create<BuilderStore>((set) => ({
   elements: [],
   selectedElement: null,
-  savedForms: [],
 
   addElement: (index, element) =>
     set((state) => {
@@ -61,20 +53,5 @@ export const useBuilderStore = create<BuilderStore>((set, get) => ({
       };
     }),
 
-  // NEW: Save the current elements as a new Form
-  saveForm: (name) => {
-    const { elements } = get();
-    const newForm: SavedForm = {
-      id: crypto.randomUUID(),
-      name,
-      createdAt: new Date().toLocaleDateString(),
-      elements: [...elements], // Deep copy elements
-    };
-
-    set((state) => ({
-      savedForms: [newForm, ...state.savedForms], // Add to top of list
-      elements: [], // Clear canvas after save
-      selectedElement: null
-    }));
-  }
+  setElements: (elements) => set(() => ({ elements })),
 }));
