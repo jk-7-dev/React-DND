@@ -5,7 +5,14 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui"],
+        // You can keep or remove these custom fonts depending on if you loaded them
+        handwriting: ["'Patrick Hand'", "cursive"],
+        display: ["'Bungee Spice'", "cursive"],
+      },
+    },
   },
   plugins: [],
 }
